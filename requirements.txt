@@ -1,5 +1,4 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
+# CPU-only inference; application tensors are pinned to torch.device("cpu").
 torch==2.14.0+cpu
-transformers==5.22.1
-torch==2.14.0
 transformers==5.22.1

@@ -43,11 +43,7 @@ class TradingBot:
         self._closed_notified: set[str] = set()
 
     def run_forever(self) -> None:
-        mode = (
-            "Capital.com DEMO orders enabled"
-            if self.settings.enable_demo_orders
-            else "analysis only; order placement disabled"
-        )
+        mode = "read-only analysis and hypothetical paper signals"
         self._notify(f"بدأ FinBERTx على CPU. الوضع: {mode}.")
         while True:
             started = time.monotonic()
@@ -140,55 +136,7 @@ class TradingBot:
             if self.journal.paused:
                 self._notify(f"إشارة {signal.direction} على {market.name} معلّقة: البوت متوقف.")
                 continue
-            if not self.settings.enable_demo_orders or not self.capital:
-                self._notify(self._signal_message(signal, simulated=True))
-                continue
-            self._execute_demo_signal(signal, market)
-
-    def _execute_demo_signal(self, signal: TradeSignal, market: Market) -> None:
-        assert self.capital is not None
-        if self.journal.daily_demo_order_count() >= self.settings.max_daily_demo_orders:
-            self._notify("تم بلوغ الحد اليومي لأوامر العرض؛ لن تُرسل أوامر إضافية.")
-            return
-        positions = self.capital.positions()
-        if len(positions) >= self.settings.max_open_positions:
-            self._notify("تم بلوغ حد الصفقات المفتوحة؛ تجاهلت الإشارة.")
-            return
-        if any(
-            (row.get("market") or {}).get("epic") == signal.epic for row in positions
-        ):
-            self._notify(f"تجاهلت الإشارة: توجد صفقة مفتوحة بالفعل على {signal.epic}.")
-            return
-
-        details = self.capital.market_details(signal.epic)
-        live_market = Market.from_payload(details)
-        if live_market.market_status != "TRADEABLE":
-            if signal.epic not in self._closed_notified:
-                self._notify(f"السوق {signal.market_name} مغلق؛ أوقفت أوامره.")
-                self._closed_notified.add(signal.epic)
-            return
-        if signal.epic in self._closed_notified:
-            self._closed_notified.remove(signal.epic)
-            self._notify(f"السوق {signal.market_name} عاد للتداول.")
-
-        try:
-            confirmation = self.capital.open_demo_position(signal, live_market)
-        except (ApiError, RuntimeError, ValueError) as exc:
-            self.journal.add_event("order_rejected", str(exc), epic=signal.epic)
-            self._notify(f"لم يُقبل أمر العرض على {signal.market_name}: {exc}")
-            return
-
-        deal_id = str(confirmation.get("dealId") or confirmation.get("dealReference") or "")
-        self.journal.add_event(
-            "demo_order",
-            f"{signal.direction} confirmed; deal={deal_id}",
-            epic=signal.epic,
-        )
-        self._notify(
-            f"تأكيد صفقة تجريبية فقط: {signal.direction} {signal.market_name} "
-            f"| الحجم {self.settings.capital_demo_order_size:g} "
-            f"| معرف التأكيد {deal_id or 'غير متاح'}."
-        )
+            self._notify(self._signal_message(signal, simulated=True))
 
     def _handle_telegram_updates(self) -> None:
         if not self.telegram:
@@ -224,11 +172,7 @@ class TradingBot:
                 "/signals — ملخص الإشارات\n/help — المساعدة"
             )
         elif command == "/status":
-            execution = (
-                "أوامر Capital التجريبية مفعّلة"
-                if self.settings.enable_demo_orders
-                else "تحليل فقط؛ إرسال الأوامر معطّل"
-            )
+            execution = "قراءة فقط ومحاكاة؛ لا تُرسل أوامر مالية"
             text = (
                 f"الحالة: {'متوقف' if self.journal.paused else 'يعمل'}\n"
                 f"التنفيذ: {execution}\n"
@@ -243,11 +187,7 @@ class TradingBot:
             self.journal.set_paused(False)
             text = (
                 "استؤنف التحليل. "
-                + (
-                    "أوامر العرض ما زالت خاضعة لكل حدود الأمان."
-                    if self.settings.enable_demo_orders
-                    else "لن تُرسل صفقات لأن التنفيذ معطّل في الإعدادات."
-                )
+                + "لن تُرسل صفقات؛ التشغيل محصور بالتحليل والمحاكاة."
             )
         elif command == "/signals":
             text = f"الملخص الحالي: {self.journal.summary()}"

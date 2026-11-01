@@ -59,7 +59,6 @@ class Settings:
     capital_identifier: str
     capital_password: str
     enable_demo_orders: bool
-    capital_demo_order_size: float
     finnhub_api_key: str
     fmp_api_key: str
     fred_api_key: str
@@ -98,7 +97,6 @@ class Settings:
             capital_identifier=os.getenv("CAPITAL_IDENTIFIER", "").strip(),
             capital_password=os.getenv("CAPITAL_PASSWORD", "").strip(),
             enable_demo_orders=_bool("ENABLE_DEMO_ORDERS", False),
-            capital_demo_order_size=_float("CAPITAL_DEMO_ORDER_SIZE", 1.0),
             finnhub_api_key=os.getenv("FINNHUB_API_KEY", "").strip(),
             fmp_api_key=os.getenv("FMP_API_KEY", "").strip(),
             fred_api_key=os.getenv("FRED_API_KEY", "").strip(),
@@ -143,24 +141,10 @@ class Settings:
             raise ConfigurationError(
                 "Only Capital.com demo mode is supported; live mode is blocked."
             )
-        if self.enable_demo_orders and not self.capital_configured:
+        if self.enable_demo_orders:
             raise ConfigurationError(
-                "Demo orders require CAPITAL_API_KEY, CAPITAL_IDENTIFIER, "
-                "and CAPITAL_PASSWORD."
-            )
-        if self.enable_demo_orders and not self.finnhub_api_key:
-            raise ConfigurationError(
-                "Demo orders require FINNHUB_API_KEY for news analysis."
-            )
-        if self.enable_demo_orders and not (
-            self.finnhub_api_key or self.fmp_api_key or self.fred_api_key
-        ):
-            raise ConfigurationError(
-                "Demo orders require at least one configured economic calendar."
-            )
-        if not 0 < self.capital_demo_order_size <= 1:
-            raise ConfigurationError(
-                "CAPITAL_DEMO_ORDER_SIZE must be above 0 and no greater than 1."
+                "Order submission is intentionally unsupported. Set "
+                "ENABLE_DEMO_ORDERS=false; this project is read-only and simulated."
             )
         if not 1 <= self.max_open_positions <= 2:
             raise ConfigurationError("MAX_OPEN_POSITIONS is capped at 2.")
@@ -195,11 +179,6 @@ class Settings:
                 "BACKTEST_REPORT_INTERVAL_HOURS must be at least 1."
             )
 
-        if self.enable_demo_orders and not self.telegram_configured:
-            raise ConfigurationError(
-                "Demo orders require TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID "
-                "for operation alerts."
-            )
 
     def validate_for_run(self) -> None:
         self.validate()

@@ -114,6 +114,11 @@ class SettingsTests(unittest.TestCase):
         self.assertFalse(settings.enable_demo_orders)
         self.assertEqual(settings.capital_env, "demo")
 
+    def test_order_submission_flag_is_rejected(self):
+        with patch.dict(os.environ, {"ENABLE_DEMO_ORDERS": "true"}, clear=True):
+            with self.assertRaises(ConfigurationError):
+                Settings.from_env()
+
 
 class JournalTests(unittest.TestCase):
     def test_news_is_deduplicated_and_pause_persists(self):

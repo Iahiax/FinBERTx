@@ -1,0 +1,21 @@
+[Unit]
+Description=FinBERTx read-only financial sentiment monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=finbertx
+WorkingDirectory=/opt/finbertx
+EnvironmentFile=/opt/finbertx/.env
+ExecStart=/opt/finbertx/.venv/bin/python -m finbertx run
+Restart=on-failure
+RestartSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/finbertx/data
+
+[Install]
+WantedBy=multi-user.target
